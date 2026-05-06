@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Belge Okuma Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #181818;
+  --surface2: #222222;
+  --border: #2a2a2a;
+  --border2: #333333;
+  --text: #f0ede8;
+  --text-soft: #888580;
+  --text-muted: #555250;
+  --gold: #c9a84c;
+  --gold-light: #f5e6b8;
+  --gold-dim: rgba(201,168,76,0.12);
+  --gold-border: rgba(201,168,76,0.25);
+  --green: #3a9e6e;
+  --green-light: rgba(58,158,110,0.12);
+  --red: #c0392b;
+  --red-light: rgba(192,57,43,0.12);
+  --blue: #2d6faa;
+  --blue-light: rgba(45,111,170,0.12);
+  --r: 12px;
+  --r-sm: 7px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 60px rgba(0,0,0,0.6);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Noise texture overlay ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0;
+}
+
+.app { position: relative; z-index: 1; }
+
+/* ── Role Switcher (Demo) ── */
+.role-bar {
+  background: var(--gold);
+  padding: 10px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.role-bar span { font-size: 0.78rem; font-weight: 600; color: #1a1200; }
+.role-tabs { display: flex; gap: 4px; }
+.role-tab {
+  padding: 5px 16px;
+  border-radius: 20px;
+  font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; border: none;
+  background: rgba(0,0,0,0.15);
+  color: #1a1200;
+  transition: all 0.2s;
+}
+.role-tab.active { background: #1a1200; color: var(--gold); }
+
+/* ── Header ── */
+.header {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface);
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 42px; height: 42px;
+  border: 1.5px solid var(--gold);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem; letter-spacing: 0.05em;
+  color: var(--gold);
+}
+.brand-text h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem; letter-spacing: 0.08em;
+  color: var(--text); line-height: 1;
+}
+.brand-text p { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.04em; }
+.header-user {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 40px;
+  padding: 7px 14px 7px 7px;
+}
+.h-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; font-weight: 700; color: #1a1200;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em;
+}
+.h-name { font-size: 0.8rem; font-weight: 500; }
+.h-role {
+  font-size: 0.65rem; color: var(--gold);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-border);
+  padding: 2px 8px; border-radius: 20px;
+}
+
+/* ── Layout ── */
+.layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 130px); }
+
+/* ── Sidebar ── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 12px;
+}
+.nav-label {
+  font-size: 0.62rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted); padding: 0 10px;
+  margin: 16px 0 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 0.83rem; font-weight: 400;
+  color: var(--text-soft);
+  transition: all 0.15s;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-border); }
+.nav-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--gold);
+  color: #1a1200;
+  font-size: 0.6rem; font-weight: 700;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Main ── */
+.main { padding: 28px 32px; overflow-y: auto; }
+
+/* ── Page title ── */
+.page-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem; letter-spacing: 0.06em;
+  color: var(--text); margin-bottom: 4px;
+}
+.page-sub { font-size: 0.8rem; color: var(--text-soft); margin-bottom: 24px; }
+
+/* ── Stats ── */
+.stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 28px; }
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.stat:hover { border-color: var(--border2); }
+.stat-line {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 2px;
+}
+.stat.gold .stat-line { background: var(--gold); }
+.stat.green .stat-line { background: var(--green); }
+.stat.blue .stat-line { background: var(--blue); }
+.stat.red .stat-line { background: var(--red); }
+.stat-n {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem; letter-spacing: 0.04em; line-height: 1;
+}
+.stat.gold .stat-n { color: var(--gold); }
+.stat.green .stat-n { color: var(--green); }
+.stat.blue .stat-n { color: var(--blue); }
+.stat.red .stat-n { color: var(--red); }
+.stat-l { font-size: 0.72rem; color: var(--text-soft); margin-top: 4px; }
+
+/* ── Panel ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.panel-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem; letter-spacing: 0.06em; color: var(--text);
+}
+.panel-body { padding: 20px; }
+
+/* ── Upload Zone ── */
+.upload-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: var(--r);
+  padding: 36px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface2);
+}
+.upload-zone:hover, .upload-zone.over {
+  border-color: var(--gold);
+  background: var(--gold-dim);
+}
+.upload-zone input { display: none; }
+.up-icon {
+  width: 48px; height: 48px;
+  border: 1.5px solid var(--gold-border);
+  border-radius: var(--r);
+  margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  background: var(--gold-dim);
+}
+.upload-zone h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: var(--text); }
+.upload-zone p { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+/* ── File strip ── */
+.file-strip {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-border);
+  border-radius: var(--r-sm);
+  margin-bottom: 16px;
+}
+.f-ext {
+  width: 34px; height: 34px;
+  background: var(--gold);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 800; color: #1a1200;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.04em;
+}
+.f-info { flex: 1; min-width: 0; }
+.f-name { font-size: 0.83rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--gold-light); }
+.f-size { font-size: 0.7rem; color: var(--text-soft); }
+.f-rm { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; padding: 4px; border-radius: 4px; transition: all 0.15s; }
+.f-rm:hover { color: var(--red); background: var(--red-light); }
+
+/* ── Form ── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.form-grid.full { grid-template-columns: 1fr; }
+.field label {
+  display: block; font-size: 0.68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted); margin-bottom: 6px;
+}
+.field input, .field select, .field textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border2);
+  border-radius: var(--r-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem; color: var(--text);
+  outline: none; transition: border-color 0.15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--gold);
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--text-muted); }
+.field select option { background: var(--surface2); }
+.field textarea { resize: vertical; min-height: 70px; }
+
+/* ── User search ── */
+.user-search-wrap { position: relative; }
+.user-suggestions {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface2);
+  border: 1.5px solid var(--border2);
+  border-radius: var(--r-sm);
+  z-index: 50; max-height: 180px; overflow-y: auto;
+  display: none; box-shadow: var(--shadow);
+}
+.user-suggestions.open { display: block; }
+.u-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; cursor: pointer;
+  transition: background 0.12s;
+}
+.u-item:hover { background: var(--border); }
+.u-av {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 700; color: white;
+  font-family: 'Bebas Neue', sans-serif; flex-shrink: 0;
+}
+.u-n { font-size: 0.82rem; font-weight: 500; }
+.u-d { font-size: 0.7rem; color: var(--text-muted); }
+
+/* ── Tags ── */
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tag {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--blue-light);
+  border: 1px solid rgba(45,111,170,0.3);
+  border-radius: 20px; padding: 3px 10px 3px 5px;
+  font-size: 0.73rem; animation: pop 0.18s ease;
+}
+@keyframes pop { from { opacity:0; transform:scale(0.8); } to { opacity:1; transform:scale(1); } }
+.tag-av { width: 18px; height: 18px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size:0.5rem; font-weight:700; color:white; }
+.tag-n { color: #7ab8e8; font-weight: 600; }
+.tag-rm { background:transparent; border:none; cursor:pointer; color: var(--text-muted); font-size: 0.7rem; line-height:1; transition: color 0.12s; }
+.tag-rm:hover { color: var(--red); }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px 22px;
+  border-radius: var(--r-sm);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem; letter-spacing: 0.06em;
+  cursor: pointer; border: none;
+  transition: all 0.18s;
+}
+.btn-gold { background: var(--gold); color: #1a1200; }
+.btn-gold:hover { background: var(--gold-light); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(201,168,76,0.3); }
+.btn-gold:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-ghost { background: transparent; color: var(--text-soft); border: 1px solid var(--border2); font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500; letter-spacing: 0; }
+.btn-ghost:hover { border-color: var(--text-soft); color: var(--text); }
+.btn-green { background: var(--green); color: white; width: 100%; padding: 14px; font-size: 1rem; }
+.btn-green:hover { background: #2d8a5e; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(58,158,110,0.3); }
+.btn-green:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* ── Document list ── */
+.doc-list { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.doc-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.doc-row:hover { border-color: var(--border2); background: #252525; }
+.doc-row.selected { border-color: var(--gold-border); background: var(--gold-dim); }
+.doc-ext {
+  width: 38px; height: 44px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.65rem; letter-spacing: 0.04em;
+  flex-shrink: 0; position: relative; overflow: hidden;
+}
+.doc-ext::after { content:''; position:absolute; top:0; right:0; border-left: 8px solid var(--surface2); border-bottom: 8px solid transparent; }
+.doc-ext.pdf { background: #3a1a1a; color: #e87070; }
+.doc-ext.docx { background: #1a2a3a; color: #70a8e8; }
+.doc-ext.xlsx { background: #1a3a2a; color: #70e8a8; }
+.doc-ext.pptx { background: #3a2a1a; color: #e8a870; }
+.doc-info { flex: 1; min-width: 0; }
+.doc-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.doc-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+.doc-progress { flex-shrink: 0; text-align: right; }
+.dp-text { font-size: 0.72rem; color: var(--text-soft); }
+.dp-bar { width: 80px; height: 3px; background: var(--border2); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+.dp-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.4s; }
+.doc-status { flex-shrink: 0; }
+
+/* ── Badge ── */
+.badge {
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 0.65rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: 'Bebas Neue', sans-serif;
+}
+.badge.complete { background: var(--green-light); color: var(--green); border: 1px solid rgba(58,158,110,0.3); }
+.badge.partial { background: var(--blue-light); color: #7ab8e8; border: 1px solid rgba(45,111,170,0.3); }
+.badge.pending { background: rgba(201,168,76,0.1); color: var(--gold); border: 1px solid var(--gold-border); }
+.badge.unread { background: var(--red-light); color: #e87070; border: 1px solid rgba(192,57,43,0.3); }
+
+/* ── Detail panel ── */
+.detail {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.detail-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.detail-filename { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.05em; }
+.detail-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; }
+.detail-body { padding: 16px 20px; }
+.section-lbl { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 10px; }
+
+.reader-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  margin-bottom: 6px;
+}
+.r-av { width: 30px; height: 30px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size:0.62rem; font-weight:700; color:white; font-family:'Bebas Neue',sans-serif; flex-shrink:0; }
+.r-info { flex: 1; }
+.r-name { font-size: 0.82rem; font-weight: 600; }
+.r-date { font-size: 0.7rem; color: var(--text-muted); }
+.r-status { font-size: 0.68rem; font-weight: 700; font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; flex-shrink: 0; }
+.r-status.read { color: var(--green); }
+.r-status.unread { color: var(--text-muted); }
+
+/* ── Progress ring ── */
+.prog-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.prog-ring { position: relative; width: 60px; height: 60px; flex-shrink: 0; }
+.prog-ring svg { transform: rotate(-90deg); }
+.prog-ring circle { fill: none; stroke-width: 4; }
+.prog-bg { stroke: var(--border2); }
+.prog-fill { stroke: var(--green); stroke-linecap: round; transition: stroke-dashoffset 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+.prog-text { position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; color: var(--text); }
+.prog-info h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.04em; }
+.prog-info p { font-size: 0.75rem; color: var(--text-soft); margin-top: 2px; }
+
+/* ── Employee view ── */
+.emp-header {
+  background: linear-gradient(135deg, var(--surface) 0%, #1a1a18 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 32px;
+}
+.emp-greeting { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.06em; }
+.emp-greeting span { color: var(--gold); }
+.emp-sub { font-size: 0.8rem; color: var(--text-soft); margin-top: 4px; }
+
+.pending-banner {
+  background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.04));
+  border: 1px solid var(--gold-border);
+  border-radius: var(--r);
+  padding: 14px 18px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+}
+.pb-icon { font-size: 1.2rem; }
+.pb-text h4 { font-size: 0.85rem; font-weight: 600; color: var(--gold-light); }
+.pb-text p { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Belge okuma kartı ── */
+.read-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+.read-card:hover { border-color: var(--border2); }
+.read-card.done { border-color: rgba(58,158,110,0.3); }
+.rc-head {
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.rc-body { padding: 16px 20px; }
+.rc-desc { font-size: 0.82rem; color: var(--text-soft); margin-bottom: 14px; line-height: 1.5; }
+.rc-meta { display: flex; gap: 16px; margin-bottom: 16px; }
+.rc-meta-item { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+.read-done-badge {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: var(--green-light);
+  border: 1px solid rgba(58,158,110,0.3);
+  border-radius: var(--r-sm);
+  font-size: 0.8rem; color: var(--green); font-weight: 600;
+}
+
+/* ── Modal ── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.overlay.on { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 32px;
+  width: 440px; max-width: 95vw;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px) scale(0.97);
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+.overlay.on .modal { transform: translateY(0) scale(1); }
+.modal-icon { font-size: 2rem; margin-bottom: 12px; }
+.modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.06em; margin-bottom: 6px; }
+.modal p { font-size: 0.83rem; color: var(--text-soft); margin-bottom: 20px; line-height: 1.5; }
+.modal-doc {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.modal-doc-ext { width: 32px; height: 32px; background: var(--gold); border-radius: 6px; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:0.6rem; color:#1a1200; }
+.modal-doc-name { font-size: 0.83rem; font-weight: 600; color: var(--gold-light); }
+.modal-doc-sub { font-size: 0.7rem; color: var(--text-muted); }
+.confirm-check {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--green-light);
+  border: 1px solid rgba(58,158,110,0.3);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+.check-box {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 2px solid var(--green);
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+  transition: background 0.15s;
+}
+.check-box.checked { background: var(--green); }
+.check-text { font-size: 0.82rem; color: var(--text-soft); line-height: 1.4; }
+.modal-acts { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  padding: 12px 18px;
+  border-radius: var(--r-sm);
+  font-size: 0.8rem; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  transform: translateY(60px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 200; max-width: 320px;
+  box-shadow: var(--shadow-lg); color: white;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.ok { background: var(--green); }
+.toast.err { background: var(--red); }
+.toast.info { background: #1a1a1a; border: 1px solid var(--border2); }
+
+/* ── Empty ── */
+.empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.83rem; }
+
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .stats { grid-template-columns: repeat(2,1fr); }
+  .form-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<script>
+// ══════════════════════════════════════════
+//  ⚙️  CONFIG
+// ══════════════════════════════════════════
+const CFG = {
+  FLOW_URL: "BURAYA_POWER_AUTOMATE_URL",
+  FLOW_URL_READ: "READ_FLOW_URL",
+  SITE_URL: "https://balsugidatr.sharepoint.com/sites/ik",
+  LIBRARY:  "Belgeler",
+};
+</script>
+
+<div class="app">
+
+  <!-- Role bar (demo için) -->
+  <div class="role-bar">
+    <span>🔧 Demo modu — Rol değiştir:</span>
+    <div class="role-tabs">
+      <button class="role-tab active" onclick="switchRole('admin')">👤 Admin</button>
+      <button class="role-tab" onclick="switchRole('employee')">👥 Çalışan</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark">BOS</div>
+      <div class="brand-text">
+        <h1>BELGE OKUMA SİSTEMİ</h1>
+        <p>BALSU GIDA · İNSAN KAYNAKLARI PORTALI</p>
+      </div>
+    </div>
+    <div class="header-user">
+      <div class="h-avatar" id="hAvatar"></div>
+      <div>
+        <div class="h-name" id="hName"></div>
+      </div>
+      <div class="h-role" id="hRole"></div>
+    </div>
+  </div>
+
+  <!-- Admin View -->
+  <div id="adminView">
+    <div class="layout">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="nav-label">Yönetim</div>
+        <div class="nav-item active" onclick="adminNav('dashboard')">
+          <span class="nav-icon">📊</span> Genel Bakış
+        </div>
+        <div class="nav-item" onclick="adminNav('upload')">
+          <span class="nav-icon">📤</span> Belge Yükle
+        </div>
+        <div class="nav-item" onclick="adminNav('docs')">
+          <span class="nav-icon">📁</span> Belgeler
+          <span class="nav-badge" id="navDocCount">0</span>
+        </div>
+        <div class="nav-label">Raporlar</div>
+        <div class="nav-item" onclick="adminNav('report')">
+          <span class="nav-icon">📋</span> Okuma Raporu
+        </div>
+      </div>
+
+      <!-- Main -->
+      <div class="main">
+
+        <!-- Dashboard -->
+        <div id="pageDashboard">
+          <div class="page-title">GENEL BAKIŞ</div>
+          <div class="page-sub">Belge okuma takip sistemi</div>
+
+          <div class="stats">
+            <div class="stat gold"><div class="stat-line"></div><div class="stat-n" id="sTotalDocs">0</div><div class="stat-l">Toplam Belge</div></div>
+            <div class="stat green"><div class="stat-line"></div><div class="stat-n" id="sTotalRead">0</div><div class="stat-l">Tam Okundu</div></div>
+            <div class="stat blue"><div class="stat-line"></div><div class="stat-n" id="sPartial">0</div><div class="stat-l">Kısmi Okundu</div></div>
+            <div class="stat red"><div class="stat-line"></div><div class="stat-n" id="sUnread">0</div><div class="stat-l">Hiç Okunmadı</div></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">SON BELGELER</div>
+              <button class="btn btn-gold" style="padding:7px 16px;font-size:0.78rem;" onclick="adminNav('upload')">+ Yeni Yükle</button>
+            </div>
+            <div class="doc-list" id="adminDocList">
+              <div class="empty">Henüz belge yüklenmedi.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upload Page -->
+        <div id="pageUpload" style="display:none;">
+          <div class="page-title">YENİ BELGE YÜKLE</div>
+          <div class="page-sub">Belgeyi yükleyin ve okuyacak çalışanları seçin</div>
+
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">BELGE BİLGİLERİ</div></div>
+            <div class="panel-body">
+
+              <div id="dropZone" class="upload-zone" onclick="document.getElementById('fileIn').click()">
+                <div class="up-icon">📎</div>
+                <h3>Dosya Seç veya Sürükle</h3>
+                <p>PDF · Word · Excel · PowerPoint · Maks 20 MB</p>
+                <input type="file" id="fileIn" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onchange="pickFile(event)">
+              </div>
+
+              <div id="fileStripWrap" style="display:none;">
+                <div class="file-strip">
+                  <div class="f-ext" id="fExt"></div>
+                  <div class="f-info">
+                    <div class="f-name" id="fName"></div>
+                    <div class="f-size" id="fSize"></div>
+                  </div>
+                  <button class="f-rm" onclick="clearFile()">✕</button>
+                </div>
+
+                <div class="form-grid">
+                  <div class="field">
+                    <label>Belge Başlığı *</label>
+                    <input type="text" id="fTitle" placeholder="Örn: İş Sağlığı Güvenliği Prosedürü">
+                  </div>
+                  <div class="field">
+                    <label>Belge Türü</label>
+                    <select id="fType">
+                      <option>Prosedür</option>
+                      <option>Yönerge</option>
+                      <option>Politika</option>
+                      <option>Sözleşme</option>
+                      <option>Form</option>
+                      <option>Duyuru</option>
+                      <option>Diğer</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-grid full" style="margin-bottom:14px;">
+                  <div class="field">
+                    <label>Okuyacak Çalışanları Seçin *</label>
+                    <div class="user-search-wrap">
+                      <input type="text" id="userSearch" placeholder="İsim veya departman ara..." autocomplete="off"
+                        oninput="searchUsers(this.value)" onfocus="searchUsers(this.value)">
+                      <div class="user-suggestions" id="userSuggestions"></div>
+                    </div>
+                    <div class="tags" id="selectedTags"></div>
+                    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:6px;" id="selHint"></div>
+                  </div>
+                </div>
+
+                <div class="form-grid full">
+                  <div class="field">
+                    <label>Açıklama / Okuma Talimatı</label>
+                    <textarea id="fDesc" placeholder="Çalışanlara iletmek istediğiniz açıklama veya talimat..."></textarea>
+                  </div>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px;">
+                  <button class="btn btn-ghost" onclick="clearFile()">İptal</button>
+                  <button class="btn btn-gold" id="sendBtn" onclick="sendDoc()">Çalışanlara Gönder →</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Docs Page -->
+        <div id="pageDocs" style="display:none;">
+          <div class="page-title">TÜM BELGELER</div>
+          <div class="page-sub">Yüklenen belgeler ve okuma durumları</div>
+          <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start;">
+            <div class="panel">
+              <div class="doc-list" id="adminDocList2">
+                <div class="empty">Henüz belge yok.</div>
+              </div>
+            </div>
+            <div class="detail" id="docDetail" style="display:none;">
+              <div class="detail-head">
+                <div class="detail-filename" id="dTitle">—</div>
+                <div class="detail-meta" id="dMeta">—</div>
+              </div>
+              <div class="detail-body">
+                <div class="prog-wrap">
+                  <div class="prog-ring">
+                    <svg width="60" height="60" viewBox="0 0 60 60">
+                      <circle class="prog-bg" cx="30" cy="30" r="26" stroke-dasharray="163" stroke-dashoffset="0"/>
+                      <circle class="prog-fill" id="progFill" cx="30" cy="30" r="26" stroke-dasharray="163" stroke-dashoffset="163"/>
+                    </svg>
+                    <div class="prog-text" id="progPct">0%</div>
+                  </div>
+                  <div class="prog-info">
+                    <h3 id="progLabel">0 / 0 Okudu</h3>
+                    <p id="progSub">Tüm çalışanlar okumadı</p>
+                  </div>
+                </div>
+                <div class="section-lbl">ÇALIŞAN OKUMA DURUMU</div>
+                <div id="readerList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Report Page -->
+        <div id="pageReport" style="display:none;">
+          <div class="page-title">OKUMA RAPORU</div>
+          <div class="page-sub">Tüm belgeler için detaylı okuma istatistikleri</div>
+          <div class="panel">
+            <div class="panel-body" id="reportBody">
+              <div class="empty">Henüz veri yok.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Employee View -->
+  <div id="empView" style="display:none;">
+    <div class="emp-header">
+      <div class="emp-greeting">MERHABA, <span id="empName">—</span></div>
+      <div class="emp-sub">Okumayı beklediğiniz belgeler aşağıda listelenmiştir.</div>
+    </div>
+    <div style="padding:24px 32px;">
+
+      <div class="pending-banner" id="pendingBanner" style="display:none;">
+        <div class="pb-icon">📬</div>
+        <div class="pb-text">
+          <h4 id="pendingTitle">Bekleyen belgeniz var</h4>
+          <p>Lütfen aşağıdaki belgeleri okuyup "Okudum Anladım" butonuna basın.</p>
+        </div>
+      </div>
+
+      <div id="empDocList"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Confirm Modal -->
+<div class="overlay" id="confirmOv">
+  <div class="modal">
+    <div class="modal-icon">📄</div>
+    <h2>OKUDUM, ANLADIM</h2>
+    <p>Aşağıdaki belgeyi okuduğunuzu ve anladığınızı onaylıyorsunuz.</p>
+    <div class="modal-doc">
+      <div class="modal-doc-ext" id="mdExt">PDF</div>
+      <div>
+        <div class="modal-doc-name" id="mdName">—</div>
+        <div class="modal-doc-sub" id="mdSub">—</div>
+      </div>
+    </div>
+    <div class="confirm-check" onclick="toggleCheck()">
+      <div class="check-box" id="checkBox"></div>
+      <div class="check-text">Bu belgeyi okudum ve içeriğini anladım. Gerekli bilgi ve talimatları aldığımı onaylıyorum.</div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="closeOv()">Vazgeç</button>
+      <button class="btn btn-green" id="confirmBtn" onclick="confirmRead(await fetch(CFG.FLOW_URL_READ, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    docId: d.id,
+    userEmail: currentUser.email,
+    userName: currentUser.name,
+    readDate: new Date().toISOString(),
+    duration: Date.now() - openTime
+  })
+});)" disabled>✓ Okudum Anladım</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+async function fetchDocsFromSharePoint() {
+  const url = `${CFG.SITE_URL}/_api/web/lists/getbytitle('BelgeOkuma')/items`;
+
+  const res = await fetch(url, {
+    headers: {
+      "Accept": "application/json;odata=verbose"
+    }
+  });
+
+  const data = await res.json();
+
+  docs = data.d.results.map(item => ({
+    id: item.Id,
+    title: item.Title,
+    type: item.DocumentType,
+    desc: item.Description,
+    name: item.FileUrl ? item.FileUrl.split('/').pop() : '',
+    ext: item.FileUrl ? item.FileUrl.split('.').pop() : '',
+    uploader: "Sistem",
+    date: new Date(item.Created).toLocaleString('tr-TR'),
+    readers: JSON.parse(item.Readers || "[]")
+  }));
+
+  renderAll();
+}
+async function fetchCurrentUser() {
+  const res = await fetch(`${CFG.SITE_URL}/_api/web/currentuser`);
+  const user = await res.json();
+
+  currentUser = {
+    name: user.Title,
+    email: user.Email,
+    role: "employee"
+  };
+
+  setUser(currentUser);
+}
+
+// ── State ─────────────────────────────────
+let currentRole = 'admin';
+let currentUser = CFG.USERS[0];
+let selectedReaders = [];
+let uploadFile = null;
+let selectedDocId = null;
+let confirmDocId = null;
+let isChecked = false;
+
+let docs = []; // Belgeler buraya kaydedilir
+
+// ── Init ──────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await fetchCurrentUser();
+  await fetchDocsFromSharePoint();
+  setupDrop();
+});
+
+function openDocument(fileName){
+  const url = `${CFG.SITE_URL}/Shared Documents/${fileName}`;
+  window.open(url, '_blank');
+
+  hasOpenedDoc = true;
+  openTime = Date.now();
+}
+
+function initials(name) {
+  return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+function setUser(u) {
+  currentUser = u;
+  document.getElementById('hAvatar').textContent = initials(u.name);
+  document.getElementById('hName').textContent = u.name;
+  document.getElementById('hRole').textContent = u.role === 'admin' ? 'Admin' : 'Çalışan';
+  if (document.getElementById('empName'))
+    document.getElementById('empName').textContent = u.name.split(' ')[0].toUpperCase();
+}
+
+// ── Role Switch ───────────────────────────
+function switchRole(role) {
+  currentRole = role;
+  document.querySelectorAll('.role-tab').forEach((t,i) =>
+    t.classList.toggle('active', (role==='admin'&&i===0)||(role==='employee'&&i===1)));
+  document.getElementById('adminView').style.display = role === 'admin' ? 'block' : 'none';
+  document.getElementById('empView').style.display = role === 'employee' ? 'block' : 'none';
+
+  if (role === 'employee') {
+    // Demo: çalışan rolüne geç
+    const emp = CFG.USERS.find(u => u.role === 'employee') || CFG.USERS[1];
+    setUser(emp);
+    renderEmpView();
+  } else {
+    setUser(CFG.USERS[0]);
+  }
+}
+
+// ── Admin Nav ─────────────────────────────
+function adminNav(page) {
+  ['dashboard','upload','docs','report'].forEach(p => {
+    document.getElementById('page' + p.charAt(0).toUpperCase() + p.slice(1)).style.display = p === page ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-item').forEach((n,i) =>
+    n.classList.toggle('active', i === ['dashboard','upload','docs','report'].indexOf(page)));
+  if (page === 'docs') renderDocDetail();
+  if (page === 'report') renderReport();
+}
+
+// ── Render All ────────────────────────────
+function renderAll() {
+  const total = docs.length;
+  const complete = docs.filter(d => d.readers.every(r=>r.read)).length;
+  const partial = docs.filter(d => d.readers.some(r=>r.read) && !d.readers.every(r=>r.read)).length;
+  const unread = docs.filter(d => d.readers.every(r=>!r.read)).length;
+
+  document.getElementById('sTotalDocs').textContent = total;
+  document.getElementById('sTotalRead').textContent = complete;
+  document.getElementById('sPartial').textContent = partial;
+  document.getElementById('sUnread').textContent = unread;
+  document.getElementById('navDocCount').textContent = total;
+
+  renderDocList('adminDocList');
+  renderDocList('adminDocList2');
+}
+
+function docStatus(d) {
+  const done = d.readers.filter(r=>r.read).length;
+  const total = d.readers.length;
+  if (done === total) return 'complete';
+  if (done > 0) return 'partial';
+  return 'pending';
+}
+
+function statusLabel(s) {
+  return { complete:'Tamamlandı', partial:'Kısmi', pending:'Bekliyor', unread:'Okunmadı' }[s] || s;
+}
+
+function renderDocList(containerId) {
+  const c = document.getElementById(containerId);
+  if (!docs.length) { c.innerHTML = '<div class="empty">Henüz belge yüklenmedi.</div>'; return; }
+  c.innerHTML = docs.map(d => {
+    const done = d.readers.filter(r=>r.read).length;
+    const total = d.readers.length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    const st = docStatus(d);
+    return `
+    <div class="doc-row ${selectedDocId===d.id?'selected':''}" onclick="selectDoc(${d.id})">
+      <div class="doc-ext ${d.ext}">${d.ext.toUpperCase()}</div>
+      <div class="doc-info">
+        <div class="doc-name">${d.title}</div>
+        <div class="doc-meta">${d.type} · ${d.date} · ${d.uploader}</div>
+      </div>
+      <div class="doc-progress">
+        <div class="dp-text">${done}/${total} okudu</div>
+        <div class="dp-bar"><div class="dp-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="doc-status">
+        <span class="badge ${st}">${statusLabel(st)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectDoc(id) {
+  selectedDocId = id;
+  renderDocList('adminDocList2');
+  renderDocDetail();
+  document.getElementById('docDetail').style.display = 'block';
+}
+
+function renderDocDetail() {
+  if (!selectedDocId) return;
+  const d = docs.find(x=>x.id===selectedDocId);
+  if (!d) return;
+  const done = d.readers.filter(r=>r.read).length;
+  const total = d.readers.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  const circumference = 163;
+  const offset = circumference - (pct/100)*circumference;
+
+  document.getElementById('dTitle').textContent = d.title;
+  document.getElementById('dMeta').textContent = `${d.type} · ${d.date}`;
+  document.getElementById('progFill').style.strokeDashoffset = offset;
+  document.getElementById('progPct').textContent = pct + '%';
+  document.getElementById('progLabel').textContent = `${done} / ${total} Okudu`;
+  document.getElementById('progSub').textContent = done === total ? '✓ Tüm çalışanlar okudu' : `${total-done} çalışan henüz okumadı`;
+
+  document.getElementById('readerList').innerHTML = d.readers.map(r => `
+    <div class="reader-row">
+      <div class="r-av" style="background:${r.color}">${initials(r.name)}</div>
+      <div class="r-info">
+        <div class="r-name">${r.name}</div>
+        <div class="r-date">${r.read ? r.readDate : r.dept}</div>
+      </div>
+      <div class="r-status ${r.read?'read':'unread'}">${r.read ? '✓ OKUDU' : '— BEKLİYOR'}</div>
+    </div>
+  `).join('');
+}
+
+// ── Report ────────────────────────────────
+function renderReport() {
+  const body = document.getElementById('reportBody');
+  if (!docs.length) { body.innerHTML = '<div class="empty">Henüz veri yok.</div>'; return; }
+  body.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border2);">
+          <th style="text-align:left;padding:8px 12px;color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Belge</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Tür</th>
+          <th style="text-align:center;padding:8px 12px;color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Toplam</th>
+          <th style="text-align:center;padding:8px 12px;color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Okudu</th>
+          <th style="text-align:center;padding:8px 12px;color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Oran</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Durum</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${docs.map(d => {
+          const done = d.readers.filter(r=>r.read).length;
+          const pct = d.readers.length ? Math.round(done/d.readers.length*100) : 0;
+          const st = docStatus(d);
+          return `<tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 12px;font-weight:600;">${d.title}</td>
+            <td style="padding:10px 12px;color:var(--text-soft);">${d.type}</td>
+            <td style="padding:10px 12px;text-align:center;">${d.readers.length}</td>
+            <td style="padding:10px 12px;text-align:center;color:var(--green);">${done}</td>
+            <td style="padding:10px 12px;text-align:center;">
+              <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+                <div style="width:60px;height:4px;background:var(--border2);border-radius:2px;overflow:hidden;">
+                  <div style="width:${pct}%;height:100%;background:var(--green);border-radius:2px;"></div>
+                </div>
+                <span>${pct}%</span>
+              </div>
+            </td>
+            <td style="padding:10px 12px;"><span class="badge ${st}">${statusLabel(st)}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── File Upload ───────────────────────────
+function pickFile(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (f.size > 20*1024*1024) { toast('Dosya 20 MB sınırını aşıyor.','err'); return; }
+  uploadFile = f;
+  const ext = f.name.split('.').pop().toLowerCase();
+  document.getElementById('fExt').textContent = ext.toUpperCase();
+  document.getElementById('fName').textContent = f.name;
+  document.getElementById('fSize').textContent = (f.size/1024).toFixed(0) + ' KB';
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('fileStripWrap').style.display = 'block';
+  document.getElementById('fTitle').value = f.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ');
+}
+
+function clearFile() {
+  uploadFile = null; selectedReaders = [];
+  document.getElementById('fileIn').value = '';
+  document.getElementById('dropZone').style.display = 'block';
+  document.getElementById('fileStripWrap').style.display = 'none';
+  document.getElementById('selectedTags').innerHTML = '';
+  document.getElementById('userSearch').value = '';
+  document.getElementById('selHint').textContent = '';
+}
+
+function setupDrop() {
+  const z = document.getElementById('dropZone');
+  if (!z) return;
+  z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('over'); });
+  z.addEventListener('dragleave', () => z.classList.remove('over'));
+  z.addEventListener('drop', e => {
+    e.preventDefault(); z.classList.remove('over');
+    if (e.dataTransfer.files[0]) {
+      document.getElementById('fileIn').files = e.dataTransfer.files;
+      pickFile({ target: { files: e.dataTransfer.files } });
+    }
+  });
+}
+
+// ── User Search ───────────────────────────
+function searchUsers(q) {
+  const box = document.getElementById('userSuggestions');
+  const term = q.trim().toLowerCase();
+  const already = selectedReaders.map(r=>r.email);
+  const results = CFG.USERS.filter(u =>
+    u.role !== 'admin' &&
+    !already.includes(u.email) &&
+    (!term || u.name.toLowerCase().includes(term) || u.dept.toLowerCase().includes(term))
+  );
+  if (!results.length) { box.classList.remove('open'); return; }
+  box.innerHTML = results.map(u => `
+    <div class="u-item" onclick="addReader('${u.email}')">
+      <div class="u-av" style="background:${u.color}">${initials(u.name)}</div>
+      <div>
+        <div class="u-n">${u.name}</div>
+        <div class="u-d">${u.dept}</div>
+      </div>
+    </div>
+  `).join('');
+  box.classList.add('open');
+}
+
+function addReader(email) {
+  const u = CFG.USERS.find(x=>x.email===email);
+  if (!u || selectedReaders.find(r=>r.email===email)) return;
+  selectedReaders.push(u);
+  document.getElementById('userSearch').value = '';
+  document.getElementById('userSuggestions').classList.remove('open');
+  renderTags();
+}
+
+function removeReader(email) {
+  selectedReaders = selectedReaders.filter(r=>r.email!==email);
+  renderTags();
+}
+
+function renderTags() {
+  document.getElementById('selectedTags').innerHTML = selectedReaders.map(u => `
+    <div class="tag">
+      <div class="tag-av" style="background:${u.color}">${initials(u.name)}</div>
+      <span class="tag-n">${u.name}</span>
+      <button class="tag-rm" onclick="removeReader('${u.email}')">✕</button>
+    </div>
+  `).join('');
+  const n = selectedReaders.length;
+  document.getElementById('selHint').textContent = n === 0 ? '' : `${n} çalışan seçildi`;
+}
+
+// ── Send Doc ──────────────────────────────
+async function sendDoc() {
+
+  const title = document.getElementById('fTitle').value.trim();
+  const type = document.getElementById('fType').value;
+  const desc = document.getElementById('fDesc').value.trim();
+
+  if (!uploadFile || !selectedReaders.length) {
+    toast('Eksik bilgi', 'err');
+    return;
+  }
+
+  const b64 = await toB64(uploadFile);
+
+  await fetch(CFG.FLOW_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fileName: uploadFile.name,
+      fileContent: b64,
+      title,
+      type,
+      desc,
+      readers: selectedReaders
+    })
+  });
+
+  toast('✓ Belge gönderildi', 'ok');
+
+  await fetchDocsFromSharePoint();
+}
+
+    // Listeye ekle
+    docs.unshift({
+      id: Date.now(),
+      title, type, desc,
+      name: uploadFile.name,
+      ext: uploadFile.name.split('.').pop().toLowerCase(),
+      uploader: currentUser.name,
+      date: new Date().toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+      readers: selectedReaders.map(r=>({ ...r, read:false, readDate:null }))
+    });
+
+    clearFile();
+    renderAll();
+    adminNav('docs');
+    toast(`✓ Belge ${selectedReaders.length} çalışana gönderildi!`, 'ok');
+  } catch(err) {
+    toast('Hata: ' + err.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Çalışanlara Gönder →';
+  }
+}
+
+function toB64(f) {
+  return new Promise((res,rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Dosya okunamadı'));
+    r.readAsDataURL(f);
+  });
+}
+
+// ── Employee View ─────────────────────────
+function renderEmpView() {
+  const myDocs = docs.filter(d => d.readers.some(r=>r.email===currentUser.email));
+  const pending = myDocs.filter(d => {
+    const me = d.readers.find(r=>r.email===currentUser.email);
+    return me && !me.read;
+  });
+
+  const banner = document.getElementById('pendingBanner');
+  if (pending.length > 0) {
+    banner.style.display = 'flex';
+    document.getElementById('pendingTitle').textContent = `${pending.length} bekleyen belgeniz var`;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  const container = document.getElementById('empDocList');
+  if (!myDocs.length) {
+    container.innerHTML = '<div class="empty" style="color:var(--text-muted);">Size gönderilmiş belge bulunmuyor.</div>';
+    return;
+  }
+
+  container.innerHTML = myDocs.map(d => {
+    const me = d.readers.find(r=>r.email===currentUser.email);
+    const isDone = me && me.read;
+    return `
+    <div class="read-card ${isDone?'done':''}">
+      <div class="rc-head">
+        <div class="doc-ext ${d.ext}" style="width:38px;height:44px;">${d.ext.toUpperCase()}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.05em;">${d.title}</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">${d.type} · Gönderen: ${d.uploader}</div>
+        </div>
+        <span class="badge ${isDone?'complete':'unread'}">${isDone?'Okundu':'Okunmadı'}</span>
+      </div>
+      <div class="rc-body">
+        ${d.desc ? `<div class="rc-desc">${d.desc}</div>` : ''}
+        <div class="rc-meta">
+          <div class="rc-meta-item">📅 ${d.date}</div>
+          <div class="rc-meta-item">📄 ${d.name}</div>
+        </div>
+        ${isDone
+          ? `<div class="read-done-badge">✓ ${me.readDate} tarihinde okudunuz</div>`
+          : `<button class="btn btn-green" onclick="openConfirm(${d.id})">📋 Okudum, Anladım</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Confirm Read ──────────────────────────
+function openConfirm(docId) {
+  confirmDocId = docId;
+  isChecked = false;
+  document.getElementById('checkBox').classList.remove('checked');
+  document.getElementById('confirmBtn').disabled = true;
+  const d = docs.find(x=>x.id===docId);
+  document.getElementById('mdExt').textContent = d.ext.toUpperCase();
+  document.getElementById('mdName').textContent = d.title;
+  document.getElementById('mdSub').textContent = `${d.type} · ${d.name}`;
+  document.getElementById('confirmOv').classList.add('on');
+}
+
+function toggleCheck() {
+  isChecked = !isChecked;
+  document.getElementById('checkBox').classList.toggle('checked', isChecked);
+  document.getElementById('confirmBtn').disabled = !isChecked;
+}
+
+async function confirmRead() {
+
+  const d = docs.find(x=>x.id===confirmDocId);
+  const me = d.readers.find(r=>r.email===currentUser.email);
+
+  if (!me) return;
+
+  try {
+    await fetch("https://defaultee7a19d634f6497fafdd901f6d43ea.25.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/5a1de8f7940844d0a999a55acc6fedec/triggers/manual/paths/invoke?api-version=1", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title: d.title,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        docName: d.name
+      })
+    });
+  } catch(e) {
+    console.error(e);
+    toast('Flow hatası!', 'err');
+  }
+
+  // UI yine çalışsın
+  me.read = true;
+  me.readDate = new Date().toLocaleString('tr-TR');
+
+  closeOv();
+  renderEmpView();
+  renderAll();
+
+  toast('✓ Okuma kaydedildi!', 'ok');
+}
+
+function closeOv() { document.getElementById('confirmOv').classList.remove('on'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('overlay')) closeOv();
+});
+
+// ── Toast ─────────────────────────────────
+function toast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast show ${type}`;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
