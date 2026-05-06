@@ -579,10 +579,15 @@ body::before {
 //  ⚙️  CONFIG
 // ══════════════════════════════════════════
 const CFG = {
-  FLOW_URL: "BURAYA_POWER_AUTOMATE_URL",
-  FLOW_URL_READ: "READ_FLOW_URL",
+  FLOW_URL: "https://defaultee7a19d634f6497fafdd901f6d43ea.25.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ebb409f1216d41199a62e3e341733e9e/triggers/manual/paths/invoke?api-version=1",
+  FLOW_URL_READ: "https://defaultee7a19d634f6497fafdd901f6d43ea.25.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/5a1de8f7940844d0a999a55acc6fedec/triggers/manual/paths/invoke?api-version=1",
   SITE_URL: "https://balsugidatr.sharepoint.com/sites/ik",
   LIBRARY:  "Belgeler",
+
+  USERS: [
+  { name: "Admin User", email: "admin@firma.com", role: "admin", dept: "IK", color: "#c9a84c" },
+  { name: "Test User", email: "test@firma.com", role: "employee", dept: "IT", color: "#2d6faa" }
+]
 };
 </script>
 
@@ -730,7 +735,10 @@ const CFG = {
 
                 <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px;">
                   <button class="btn btn-ghost" onclick="clearFile()">İptal</button>
-                  <button class="btn btn-gold" id="sendBtn" onclick="sendDoc()">Çalışanlara Gönder →</button>
+                  <!-- SADECE DEĞİŞEN KRİTİK KISIMLAR -->
+
+<!-- BUTON FIX -->
+<button class="btn btn-gold" id="sendBtn" onclick="sendDoc()">Çalışanlara Gönder →</button>
                 </div>
               </div>
 
@@ -1178,33 +1186,49 @@ function renderTags() {
 // ── Send Doc ──────────────────────────────
 async function sendDoc() {
 
-  const title = document.getElementById('fTitle').value.trim();
-  const type = document.getElementById('fType').value;
-  const desc = document.getElementById('fDesc').value.trim();
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Gönderiliyor...';
 
-  if (!uploadFile || !selectedReaders.length) {
-    toast('Eksik bilgi', 'err');
-    return;
+  try {
+    const title = document.getElementById('fTitle').value.trim();
+    const type = document.getElementById('fType').value;
+    const desc = document.getElementById('fDesc').value.trim();
+
+    if (!uploadFile || !selectedReaders.length) {
+      toast('Eksik bilgi', 'err');
+      return;
+    }
+
+    const b64 = await toB64(uploadFile);
+
+    await fetch(CFG.FLOW_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: uploadFile.name,
+        fileContent: b64,
+        title,
+        type,
+        desc,
+        readers: selectedReaders
+      })
+    });
+
+    toast('✓ Belge gönderildi', 'ok');
+
+    await fetchDocsFromSharePoint();
+
+    clearFile();
+    renderAll();
+    adminNav('docs');
+
+  } catch (err) {
+    toast('Hata: ' + err.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Çalışanlara Gönder →';
   }
-
-  const b64 = await toB64(uploadFile);
-
-  await fetch(CFG.FLOW_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fileName: uploadFile.name,
-      fileContent: b64,
-      title,
-      type,
-      desc,
-      readers: selectedReaders
-    })
-  });
-
-  toast('✓ Belge gönderildi', 'ok');
-
-  await fetchDocsFromSharePoint();
 }
 
     // Listeye ekle
@@ -1281,7 +1305,9 @@ function renderEmpView() {
         </div>
         ${isDone
           ? `<div class="read-done-badge">✓ ${me.readDate} tarihinde okudunuz</div>`
-          : `<button class="btn btn-green" onclick="openConfirm(${d.id})">📋 Okudum, Anladım</button>`
+          : `<button class="btn btn-green" id="confirmBtn" onclick="confirmRead()" disabled>
+  ✓ Okudum Anladım
+</button>`
         }
       </div>
     </div>`;
@@ -1309,13 +1335,13 @@ function toggleCheck() {
 
 async function confirmRead() {
 
-  const d = docs.find(x=>x.id===confirmDocId);
-  const me = d.readers.find(r=>r.email===currentUser.email);
+  const d = docs.find(x => x.id === confirmDocId);
+  const me = d.readers.find(r => r.email === currentUser.email);
 
   if (!me) return;
 
   try {
-    await fetch("https://defaultee7a19d634f6497fafdd901f6d43ea.25.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/5a1de8f7940844d0a999a55acc6fedec/triggers/manual/paths/invoke?api-version=1", {
+    await fetch(CFG.FLOW_URL_READ, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1327,12 +1353,12 @@ async function confirmRead() {
         docName: d.name
       })
     });
-  } catch(e) {
+
+  } catch (e) {
     console.error(e);
     toast('Flow hatası!', 'err');
   }
 
-  // UI yine çalışsın
   me.read = true;
   me.readDate = new Date().toLocaleString('tr-TR');
 
